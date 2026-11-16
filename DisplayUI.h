@@ -1,4 +1,5 @@
 #pragma once
+#include "RoboEyes_ST7735.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
 #include <SPI.h>
@@ -23,17 +24,7 @@ private:
     uint32_t lastTypeMs = 0;
 
     // Состояние глаз
-    float eyeCurX = 0, eyeCurY = 0;
-    int eyeTargetX = 0, eyeTargetY = 0;
-    int prevLx = -1, prevRx = -1, prevEy = -1;
-    int prevTotalLid = -1;
-    uint16_t prevEyeColor = 0;
-    bool isBlinking = false;
-    uint8_t blinkPhase = 0;
-    int lidHeight = 0;
-    uint32_t lastEyeFrameMs = 0;
-    uint32_t nextBlinkMs = 2000;
-    uint32_t nextMoveMs = 1500;
+    RoboEyesST7735 roboEyes;
 
     // Таймер часов
     uint32_t lastClockDrawMs = 0;
@@ -116,9 +107,16 @@ public:
 
         tft.initR(INITR_BLACKTAB);
         tft.setRotation(1);
-        tft.fillScreen(ST77XX_RED);
-        delay(300);
         tft.fillScreen(ST77XX_BLACK);
+        // Инициализируем глаза под разрешение 160x128 (горизонтальная ориентация) с частотой 40 FPS
+        roboEyes.begin(&tft, 160, 128, 40);
+        // Настраиваем цвета: черный фон (ST77XX_BLACK) и голубые глаза (ST77XX_CYAN)
+        roboEyes.setDisplayColors(ST77XX_BLACK, ST77XX_CYAN);
+
+        // Включаем авто-моргание (каждые 3 сек +/- 2 сек) и случайное оглядывание
+        roboEyes.setAutoblinker(ON, 4, 2);
+        roboEyes.setIdleMode(ON, 3, 2);
+        roboEyes.setCuriosity(ON);
     }
 
     void showNotification(const NotificationItem& n, uint8_t index, uint8_t total) {
@@ -171,90 +169,30 @@ public:
         if (!roboEyesActive) {
             tft.fillScreen(ST77XX_BLACK);
             roboEyesActive = true;
-            eyeCurX = 0; eyeCurY = 0;
-            eyeTargetX = 0; eyeTargetY = 0;
-            lidHeight = 0;
-            isBlinking = false;
+        }
 
-            prevLx = -1; prevRx = -1; prevEy = -1;
-            prevTotalLid = -1; prevEyeColor = 0;
+        // Обновляем индикатор статуса BLE в левом верхнем углу (не пересекается с зоной глаз Y=16..112)
+        tft.fillRect(4, 4, 45, 8, ST77XX_BLACK);
+        tft.setFont(NULL);
+        tft.setTextColor(COLOR_DARKGREY);
+        tft.setTextSize(1);
+        tft.setCursor(4, 4);
+        tft.print(isConnected ? "BLE ON " : "BLE OFF");
 
-            tft.setFont(NULL);
-            tft.setTextColor(COLOR_DARKGREY);
-            tft.setTextSize(1);
-            tft.setCursor(4, 4);
-            tft.print(isConnected ? "BLE ON " : "BLE OFF");
+        if (isConnected) {
+            roboEyes.setDisplayColors(ST77XX_BLACK, ST77XX_CYAN);
+            roboEyes.setMood(DEFAULT); // Бодрые голубые глаза
+        } else {
+            roboEyes.setDisplayColors(ST77XX_BLACK, ST77XX_ORANGE);
+            roboEyes.setMood(TIRED);   // «Сонные» оранжевые глаза
         }
     }
 
+
     void updateRoboEyes(bool isConnected) {
         if (!roboEyesActive) return;
+        roboEyes.update(); // Библиотека сама рисует кадры с учетом FPS
 
-        uint32_t now = millis();
-        if (now - lastEyeFrameMs < 25) return;
-        lastEyeFrameMs = now;
-
-        if (now >= nextMoveMs && !isBlinking) {
-            if (isConnected) {
-                eyeTargetX = random(-14, 15);
-                eyeTargetY = random(-10, 11);
-                nextMoveMs = now + random(1500, 4000);
-            } else {
-                eyeTargetX = 0;
-                eyeTargetY = 10;
-                nextMoveMs = now + 2000;
-            }
-        }
-
-        eyeCurX += (eyeTargetX - eyeCurX) * 0.25;
-        eyeCurY += (eyeTargetY - eyeCurY) * 0.25;
-
-        if (now >= nextBlinkMs && !isBlinking) {
-            isBlinking = true;
-            blinkPhase = 1;
-        }
-
-        if (isBlinking) {
-            if (blinkPhase == 1) {
-                lidHeight += 12;
-                if (lidHeight >= EYE_H) { lidHeight = EYE_H; blinkPhase = 2; }
-            } else if (blinkPhase == 2) {
-                lidHeight -= 12;
-                if (lidHeight <= 0) { lidHeight = 0; isBlinking = false; nextBlinkMs = now + random(2500, 6000); }
-            }
-        }
-
-        uint16_t eyeColor = isConnected ? ST77XX_CYAN : ST77XX_ORANGE;
-        int sleepLid = isConnected ? 0 : 18;
-        int totalLid = max(lidHeight, sleepLid);
-
-        int lx = LEFT_EYE_BASE_X + (int)round(eyeCurX);
-        int rx = RIGHT_EYE_BASE_X + (int)round(eyeCurX);
-        int ey = EYE_BASE_Y + (int)round(eyeCurY);
-
-        if (lx == prevLx && ey == prevEy && totalLid == prevTotalLid && eyeColor == prevEyeColor) return;
-
-        if (eyeColor != prevEyeColor) {
-            tft.fillRect(4, 4, 45, 8, ST77XX_BLACK);
-            tft.setFont(NULL);
-            tft.setTextColor(COLOR_DARKGREY);
-            tft.setTextSize(1);
-            tft.setCursor(4, 4);
-            tft.print(isConnected ? "BLE ON " : "BLE OFF");
-        }
-
-        eyeCanvas.fillScreen(ST77XX_BLACK);
-        eyeCanvas.fillRoundRect(0, 0, EYE_W, EYE_H, EYE_RADIUS, eyeColor);
-        if (totalLid > 0) eyeCanvas.fillRect(0, 0, EYE_W, totalLid, ST77XX_BLACK);
-
-        clearEyeTrail(prevLx, prevEy, lx, ey);
-        clearEyeTrail(prevRx, prevEy, rx, ey);
-
-        tft.drawRGBBitmap(lx, ey, eyeCanvas.getBuffer(), EYE_W, EYE_H);
-        tft.drawRGBBitmap(rx, ey, eyeCanvas.getBuffer(), EYE_W, EYE_H);
-
-        prevLx = lx; prevRx = rx; prevEy = ey;
-        prevTotalLid = totalLid; prevEyeColor = eyeColor;
     }
 
     void updateClock(bool timeSynced) {

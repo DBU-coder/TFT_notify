@@ -49,5 +49,5 @@ void loop() {
     ui.updateRoboEyes(bleManager.isConnected());
     ui.updateClock(bleManager.isTimeSynced());
 
-    delay(10);
+    delay(1);
 }

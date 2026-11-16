@@ -8,7 +8,7 @@
 #define TFT_DC    3
 #define TFT_MOSI  7
 #define TFT_SCLK  6
-#define SPI_FREQ  27000000
+#define SPI_FREQ  40000000
 
 // ==================== НАСТРОЙКИ КАРУСЕЛИ И АНИМАЦИИ ====================
 #define QUEUE_SIZE     10
