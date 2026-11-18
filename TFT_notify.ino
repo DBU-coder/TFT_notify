@@ -3,10 +3,12 @@
 #include "NotificationQueue.h"
 #include "DisplayUI.h"
 #include "BleAncsClient.h"
+#include "WeatherManager.h"
 
 NotificationQueue notifQueue;
 DisplayUI ui;
 BleManager bleManager;
+WeatherManager weatherManager;
 
 uint32_t currentShownUid = 0;
 uint32_t lastSwitchMs = 0;
@@ -17,6 +19,7 @@ void setup() {
     Serial.println("System start...");
 
     ui.begin();
+    weatherManager.begin();
     ui.startRoboEyes(false);
 
     bleManager.begin();
@@ -25,6 +28,7 @@ void setup() {
 
 void loop() {
     bleManager.update();
+    weatherManager.update();
 
     uint32_t now = millis();
     uint8_t total = notifQueue.getCount();
@@ -39,7 +43,7 @@ void loop() {
             }
         }
     } else {
-        if (ui.isShowingNotification()) {
+        if (!ui.isRoboEyesActive()) {
             currentShownUid = 0;
             ui.startRoboEyes(bleManager.isConnected());
         }
@@ -48,6 +52,6 @@ void loop() {
     ui.updateTypewriter();
     ui.updateRoboEyes(bleManager.isConnected());
     ui.updateClock(bleManager.isTimeSynced());
-
+    ui.updateWeatherDisplay();
     delay(1);
 }

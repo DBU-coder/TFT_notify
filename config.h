@@ -8,7 +8,7 @@
 #define TFT_DC    3
 #define TFT_MOSI  7
 #define TFT_SCLK  6
-#define SPI_FREQ  40000000
+#define SPI_FREQ  27000000
 
 // ==================== НАСТРОЙКИ КАРУСЕЛИ И АНИМАЦИИ ====================
 #define QUEUE_SIZE     10
@@ -32,3 +32,10 @@ static NimBLEUUID dataSourceCharacteristicUUID("22EAC6E9-24D6-4BB5-BE44-B36ACE7C
 
 static NimBLEUUID ctsServiceUUID((uint16_t)0x1805);
 static NimBLEUUID currentTimeCharUUID((uint16_t)0x2A2B);
+
+// ==================== НАСТРОЙКИ ПОГОДЫ И WI-FI ====================
+#define WEATHER_LAT         "50.4501"   // Широта (Киев)
+#define WEATHER_LON         "30.5234"   // Долгота (Киев)
+#define WEATHER_INTERVAL_MS 1200000UL   // Обновлять погоду раз в 30 минут (в мс)
+#define WIFI_PORTAL_TIMEOUT 120         // Таймаут окна настройки Wi-Fi (2 минуты)
+

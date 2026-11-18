@@ -8,6 +8,15 @@
 #include "config.h"
 #include "NotificationQueue.h"
 
+enum WeatherIconType {
+    ICON_NONE = 0,
+    ICON_SUN,
+    ICON_CLOUD,
+    ICON_RAIN,
+    ICON_SNOW,
+    ICON_STORM
+};
+
 class DisplayUI {
 private:
     Adafruit_ST7735 tft;
@@ -89,10 +98,47 @@ private:
         else if (newY < oldY) tft.fillRect(oldX, newY + EYE_H, EYE_W, oldY - newY, ST77XX_BLACK);
     }
 
+    char weatherText[32] = "";
+    WeatherIconType weatherIcon = ICON_NONE;
+    bool weatherUpdated = false;
+
+    void drawWeatherIcon(int x, int y, WeatherIconType type) {
+        if (type == ICON_SUN) {
+            tft.fillCircle(x + 6, y + 6, 3, ST77XX_YELLOW);
+            tft.drawPixel(x + 6, y + 1, ST77XX_YELLOW);
+            tft.drawPixel(x + 6, y + 11, ST77XX_YELLOW);
+            tft.drawPixel(x + 1, y + 6, ST77XX_YELLOW);
+            tft.drawPixel(x + 11, y + 6, ST77XX_YELLOW);
+            tft.drawPixel(x + 2, y + 2, ST77XX_YELLOW);
+            tft.drawPixel(x + 10, y + 10, ST77XX_YELLOW);
+            tft.drawPixel(x + 10, y + 2, ST77XX_YELLOW);
+            tft.drawPixel(x + 2, y + 10, ST77XX_YELLOW);
+        } else if (type == ICON_CLOUD || type == ICON_RAIN || type == ICON_SNOW || type == ICON_STORM) {
+            uint16_t cColor = (type == ICON_STORM) ? 0x7BEF : 0xC618;
+            tft.fillCircle(x + 4, y + 6, 3, cColor);
+            tft.fillCircle(x + 8, y + 5, 3, cColor);
+            tft.fillRect(x + 4, y + 6, 5, 3, cColor);
+
+            if (type == ICON_RAIN) {
+                tft.drawLine(x + 4, y + 10, x + 3, y + 12, ST77XX_CYAN);
+                tft.drawLine(x + 8, y + 10, x + 7, y + 12, ST77XX_CYAN);
+            } else if (type == ICON_SNOW) {
+                tft.drawPixel(x + 4, y + 11, ST77XX_WHITE);
+                tft.drawPixel(x + 8, y + 11, ST77XX_WHITE);
+            } else if (type == ICON_STORM) {
+                tft.drawLine(x + 6, y + 9, x + 5, y + 11, ST77XX_YELLOW);
+                tft.drawLine(x + 5, y + 11, x + 7, y + 12, ST77XX_YELLOW);
+            }
+        }
+    }
+
+
 public:
     DisplayUI() : tft(TFT_CS, TFT_DC, TFT_RST), eyeCanvas(EYE_W, EYE_H) {}
 
     bool isShowingNotification() const { return showingNotification; }
+    bool isRoboEyesActive() const { return roboEyesActive; }
+    
     void setShowingNotification(bool state) { showingNotification = state; }
 
     void begin() {
@@ -165,6 +211,7 @@ public:
     }
 
     void startRoboEyes(bool isConnected) {
+        weatherUpdated = true;
         showingNotification = false;
         if (!roboEyesActive) {
             tft.fillScreen(ST77XX_BLACK);
@@ -216,4 +263,71 @@ public:
         tft.setCursor(124, 4);
         tft.print(timeStr);
     }
+
+    void setWeather(const char* utf8Weather, WeatherIconType icon = ICON_NONE) {
+    strncpy(weatherText, utf8Weather, sizeof(weatherText) - 1);
+    weatherText[sizeof(weatherText) - 1] = '\0';
+    weatherIcon = icon;
+    weatherUpdated = true;
+}
+
+    void showWifiSetupScreen(const char* apName, const char* ip) {
+        roboEyesActive = false;
+        showingNotification = false;
+        tft.fillScreen(ST77XX_BLACK);
+        tft.fillRect(0, 0, 160, 12, ST77XX_ORANGE);
+
+        tft.setFont(NULL);
+        tft.setTextColor(ST77XX_BLACK);
+        tft.setTextSize(1);
+        tft.setCursor(22, 2);
+        tft.print("WI-FI SETUP MODE");
+
+        tft.setTextColor(ST77XX_WHITE);
+        tft.setCursor(4, 24);
+        tft.print("1. Connect phone Wi-Fi to:");
+        tft.setTextColor(ST77XX_CYAN);
+        tft.setCursor(4, 38);
+        tft.print(apName);
+
+        tft.setTextColor(ST77XX_WHITE);
+        tft.setCursor(4, 58);
+        tft.print("2. Open in browser:");
+        tft.setTextColor(ST77XX_YELLOW);
+        tft.setCursor(4, 72);
+        tft.print("http://");
+        tft.print(ip);
+
+        tft.setTextColor(COLOR_DARKGREY);
+        tft.setCursor(4, 105);
+        tft.print("Timeout: 2 min...");
+    }
+
+    void updateWeatherDisplay() {
+        if (!roboEyesActive || !weatherUpdated || strlen(weatherText) == 0) return;
+        weatherUpdated = false;
+
+        tft.fillRect(0, 113, 160, 15, ST77XX_BLACK);
+
+        String winWeather = Utf8win1251(weatherText);
+        tft.setFont(&segoeuiUkr6);
+        tft.setTextColor(ST77XX_CYAN);
+        tft.setTextWrap(false);
+
+        int16_t x1, y1;
+        uint16_t w, h;
+        tft.getTextBounds(winWeather, 0, 0, &x1, &y1, &w, &h);
+
+        int iconWidth = (weatherIcon != ICON_NONE) ? 16 : 0;
+        int totalWidth = w + iconWidth;
+        int startX = max(2, (160 - totalWidth) / 2);
+
+        if (weatherIcon != ICON_NONE) {
+            drawWeatherIcon(startX, 114, weatherIcon);
+        }
+
+        tft.setCursor(startX + iconWidth, 124);
+        tft.print(winWeather);
+    }
+
 };

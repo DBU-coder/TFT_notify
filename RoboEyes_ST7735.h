@@ -13,14 +13,15 @@
 #define OFF 0
 
 // Направления взгляда
-#define N  1
-#define NE 2
-#define E  3
-#define SE 4
-#define S  5
-#define SW 6
-#define W  7
-#define NW 8
+#define EYE_N  1
+#define EYE_NE 2
+#define EYE_E  3
+#define EYE_SE 4
+#define EYE_S  5
+#define EYE_SW 6
+#define EYE_W  7
+#define EYE_NW 8
+
 
 class RoboEyesST7735 {
 private:
@@ -132,17 +133,18 @@ public:
         int maxX = screenWidth - eyeLwidthCurrent - spaceBetweenCurrent - eyeRwidthCurrent;
         int maxY = 96 - eyeLheightDefault;
         switch (pos) {
-            case N:  eyeLxNext = maxX / 2; eyeLyNext = 0; break;
-            case NE: eyeLxNext = maxX;     eyeLyNext = 0; break;
-            case E:  eyeLxNext = maxX;     eyeLyNext = maxY / 2; break;
-            case SE: eyeLxNext = maxX;     eyeLyNext = maxY; break;
-            case S:  eyeLxNext = maxX / 2; eyeLyNext = maxY; break;
-            case SW: eyeLxNext = 0;        eyeLyNext = maxY; break;
-            case W:  eyeLxNext = 0;        eyeLyNext = maxY / 2; break;
-            case NW: eyeLxNext = 0;        eyeLyNext = 0; break;
-            default: eyeLxNext = eyeLxDefault; eyeLyNext = eyeLyDefault; break;
+            case EYE_N:  eyeLxNext = maxX / 2; eyeLyNext = 0; break;
+            case EYE_NE: eyeLxNext = maxX;     eyeLyNext = 0; break;
+            case EYE_E:  eyeLxNext = maxX;     eyeLyNext = maxY / 2; break;
+            case EYE_SE: eyeLxNext = maxX;     eyeLyNext = maxY; break;
+            case EYE_S:  eyeLxNext = maxX / 2; eyeLyNext = maxY; break;
+            case EYE_SW: eyeLxNext = 0;        eyeLyNext = maxY; break;
+            case EYE_W:  eyeLxNext = 0;        eyeLyNext = maxY / 2; break;
+            case EYE_NW: eyeLxNext = 0;        eyeLyNext = 0; break;
+            default:     eyeLxNext = eyeLxDefault; eyeLyNext = eyeLyDefault; break;
         }
     }
+
 
     void setAutoblinker(bool active, int interval = 3, int variation = 2) {
         autoblinker = active; blinkInterval = interval; blinkIntervalVariation = variation;
